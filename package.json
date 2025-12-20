@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Zedstrider/Ani-ping#readme",
   "dependencies": {
+    "axios": "^1.13.2",
     "express": "^5.2.1"
   }
 }
