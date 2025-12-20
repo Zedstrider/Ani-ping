@@ -1,0 +1,22 @@
+{
+  "name": "ani-ping",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zedstrider/Ani-ping.git"
+  },
+  "author": "Sharath P",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Zedstrider/Ani-ping/issues"
+  },
+  "homepage": "https://github.com/Zedstrider/Ani-ping#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
