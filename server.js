@@ -16,9 +16,16 @@ const transporter = nodemailer.createTransport({
   }
 })
 
-setInterval(async ()=>{
+async function checkUpdates(){
+    // 1. Day Check: Stop immediately if today is not Sunday
+    // (0 = Sunday, 1 = Monday, etc.)
+    const today = new Date().getDay();
+    if (today !== 0) {
+        console.log("Not Sunday. Skipping check.");
+        return; 
+    }
     try{
-        const response = await axios.get('https://api.jikan.moe/v4/schedules')
+        const response = await axios.get('https://api.jikan.moe/v4/schedules/sunday')
          //list of anime objects
         const animeList = response.data.data;
 
@@ -52,7 +59,10 @@ setInterval(async ()=>{
     }catch(error){
         console.error("Something went wrong:",error)
     }
-},3600000)
+}
+
+checkUpdates()
+setInterval(checkUpdates,3600000)
 
 app.listen(PORT,()=>{console.log(`Server is running on port ${PORT}`)})
 
