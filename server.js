@@ -10,8 +10,8 @@ let lastSentAnime
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,              // Use the secure SSL port
-  secure: true,
+  port: 587,              // Use the secure SSL port
+  secure: false,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS
