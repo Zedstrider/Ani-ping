@@ -1,11 +1,13 @@
-const express=require('express') //include external modules
+const express=require('express') 
 const app=express()
 app.use(express.static(__dirname))
 app.use(express.urlencoded({ extended: true }))
 const { google } = require('googleapis')
 const axios=require('axios')
 require('dotenv').config()
-const mongoose = require('mongoose'); // Import the driver
+const mongoose = require('mongoose'); 
+const cron = require('node-cron')
+
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -14,7 +16,8 @@ mongoose.connect(process.env.MONGO_URI)
 
 const subscriberSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
-  joinedAt: { type: Date, default: Date.now }
+  joinedAt: { type: Date, default: Date.now },
+  animeTitle:{ type: [String], required: true }
 });
 
 const Subscriber = mongoose.model('Subscriber', subscriberSchema);
@@ -36,8 +39,8 @@ let lastSentAnime=null
 async function sendEmail(to, subject, message) {
   try {
     const rawMessage = makeBody(
-      to,                          //  Now Dynamic!
-      process.env.GMAIL_USER,      // From (Still you)
+      to,                          
+      process.env.GMAIL_USER,      
       subject,
       message
     );
@@ -72,8 +75,7 @@ function makeBody(to, from, subject, message) {
 }
 
 async function checkUpdates() {
-  // Temporary: Comment this out to test immediately, 
-  // uncomment it when you deploy!
+  // uncomment it when deployed!
   /* const today = new Date().getDay();
   if (today !== 0) {
       console.log("Not Sunday. Skipping check.");
@@ -90,15 +92,15 @@ async function checkUpdates() {
       return anime.title === 'One Piece';
     });
 
-    // Note: We removed the 'lastSentAnime' check for testing so it sends every time we restart.
-    // In production, you'd want that check back!
+    // Note: Removed the 'lastSentAnime' check for testing so it sends every time it restarts.
+    // In production, check back!
     if (targetAnime) {
       
-      // 1. Fetch all subscribers from MongoDB
+      //Fetch all subscribers from MongoDB
       const allSubscribers = await Subscriber.find({});
       console.log(`Found ${allSubscribers.length} subscriber(s). Sending emails...`);
 
-      // 2. Loop through each subscriber
+      // Loop through each subscriber
       for (const sub of allSubscribers) {
           await sendEmail(
             sub.email, 
@@ -116,29 +118,34 @@ async function checkUpdates() {
 }
 
 app.post('/subscribe', async (req, res) => {
-  const email = req.body.email;
-
+  const email = req.body.email
+  const animeTitle = req.body.animeTitle
+  const existingSubscriber = await Subscriber.findOne({ email: email });
   try {
-    //Create a new document using our Model
-    const newSubscriber = new Subscriber({ email: email });
+    if (existingSubscriber) {
+      existingSubscriber.animeTitle.push(animeTitle)
+      await existingSubscriber.save()
+    } else {
+        //Create a new document using the Model
+        const newSubscriber = new Subscriber({ email: email , animeTitle:animeTitle})
 
-    //Save it to the database (this is an async operation!)
-    await newSubscriber.save();
+        //Save it to the database (this is an async operation!)
+        await newSubscriber.save()
 
-    console.log("New Subscriber added:", email);
-    
+        console.log("New Subscriber added:", email)
+    }
     res.send(`
       <h1>Success!</h1>
-      <p><b>${email}</b> is now subscribed to One Piece alerts.</p>
+      <p><b>${email}</b> is now subscribed to ${animeTitle} alerts.</p>
       <a href="/">Go Back</a>
-    `);
+    `)
 
   } catch (error) {
-    console.error("Error adding subscriber:", error.message);
+    console.error("Error adding subscriber:", error.message)
     if (error.code === 11000) {
-        res.send(`<h1>Oops!</h1><p>That email is already subscribed.</p><a href="/">Go Back</a>`);
+        res.send(`<h1>Oops!</h1><p>That email is already subscribed.</p><a href="/">Go Back</a>`)
     } else {
-        res.send(`<h1>Error</h1><p>Something went wrong. Please try again.</p>`);
+        res.send(`<h1>Error</h1><p>Something went wrong. Please try again.</p>`)
     }
   }
 });
@@ -146,10 +153,13 @@ app.post('/subscribe', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
   
-  // Run immediately on startup
-  checkUpdates()
+  
+  cron.schedule('0 8 * * 0', () => {
+    console.log("It is Sunday! Checking for One Piece...")
+    checkUpdates()
+  })
 
-  // Then run every hour
+  
   setInterval(checkUpdates, 3600000)
 });
 

@@ -23,6 +23,7 @@
     "express": "^5.2.1",
     "googleapis": "^169.0.0",
     "mongoose": "^9.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11"
   }
 }
