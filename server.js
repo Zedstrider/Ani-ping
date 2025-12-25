@@ -12,15 +12,15 @@ const cron = require('node-cron')
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("Connected to MongoDB Atlas"))
-  .catch((err) => console.error("MongoDB Connection Error:", err));
+  .catch((err) => console.error("MongoDB Connection Error:", err))
 
 const subscriberSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   joinedAt: { type: Date, default: Date.now },
   animeTitle:{ type: [String], required: true }
-});
+})
 
-const Subscriber = mongoose.model('Subscriber', subscriberSchema);
+const Subscriber = mongoose.model('Subscriber', subscriberSchema)
 
 const PORT = 5501
 // Setup Google Auth Client
@@ -33,8 +33,6 @@ const oAuth2Client = new google.auth.OAuth2(
 oAuth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN })
 
 const gmail = google.gmail({ version: 'v1', auth: oAuth2Client })
-
-let lastSentAnime=null
 
 async function sendEmail(to, subject, message) {
   try {
@@ -52,7 +50,7 @@ async function sendEmail(to, subject, message) {
 
     console.log(`Email sent to ${to}`);
   } catch (error) {
-    console.error("Failed to send to " + to, error.message);
+    console.error("Failed to send to " + to, error.message)
   }
 }
 
@@ -75,45 +73,38 @@ function makeBody(to, from, subject, message) {
 }
 
 async function checkUpdates() {
-  // uncomment it when deployed!
-  /* const today = new Date().getDay();
-  if (today !== 0) {
-      console.log("Not Sunday. Skipping check.");
-      return; 
-  }
-  */
-
   try {
-    console.log("Checking Jikan API...");
-    const response = await axios.get('https://api.jikan.moe/v4/schedules/sunday');
-    const animeList = response.data.data;
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    const today = new Date()
+    const dayName = days[today.getDay()]
+    console.log("Checking Jikan API...")
+    const response = await axios.get(`https://api.jikan.moe/v4/schedules/${dayName}`)
+    const animeList = response.data.data
 
-    const targetAnime = animeList.find((anime) => {
-      return anime.title === 'One Piece';
-    });
+    console.log(`Found ${animeList.length} anime airing today.`)
+    
+    for (const anime of animeList) {
+      console.log("Airing today:", anime.title)
+    }
+    for (const anime of animeList) {
+      // Find subscribers who are watching THIS specific anime
+      const subscribers = await Subscriber.find({ animeTitle: anime.title })
 
-    // Note: Removed the 'lastSentAnime' check for testing so it sends every time it restarts.
-    // In production, check back!
-    if (targetAnime) {
-      
-      //Fetch all subscribers from MongoDB
-      const allSubscribers = await Subscriber.find({});
-      console.log(`Found ${allSubscribers.length} subscriber(s). Sending emails...`);
+      if (subscribers.length > 0) {
+        console.log(`Found ${subscribers.length} fans for: ${anime.title}`)
 
-      // Loop through each subscriber
-      for (const sub of allSubscribers) {
+        //Send emails to those fans
+        for (const sub of subscribers) {
           await sendEmail(
-            sub.email, 
-            `New episode alert: ${targetAnime.title}`,
-            `<h3>Heads up!</h3><p><b>${targetAnime.title}</b> is currently airing.</p>`
-          );
+            sub.email,
+            `New episode alert: ${anime.title}`,
+            `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>`
+          )
+        }
       }
-      
-    } else {
-      console.log("One Piece not found in schedule.");
     }
   } catch (error) {
-    console.error("Logic Error:", error.message);
+    console.error("Logic Error:", error.message)
   }
 }
 
@@ -123,9 +114,17 @@ app.post('/subscribe', async (req, res) => {
   const existingSubscriber = await Subscriber.findOne({ email: email });
   try {
     if (existingSubscriber) {
-      existingSubscriber.animeTitle.push(animeTitle)
-      await existingSubscriber.save()
-    } else {
+        if (!existingSubscriber.animeTitle.includes(animeTitle)){
+          existingSubscriber.animeTitle.push(animeTitle)
+          await existingSubscriber.save()
+        }else{
+          return res.send(`
+                          <h1>Oops!</h1>
+                          <p>You have already subscribed to <b>${animeTitle}</b>.</p>
+                          <a href="/">Go Back</a>
+        `)
+        }
+  } else {
         //Create a new document using the Model
         const newSubscriber = new Subscriber({ email: email , animeTitle:animeTitle})
 
@@ -148,21 +147,22 @@ app.post('/subscribe', async (req, res) => {
         res.send(`<h1>Error</h1><p>Something went wrong. Please try again.</p>`)
     }
   }
-});
+})
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
   
   
-  cron.schedule('0 8 * * 0', () => {
-    console.log("It is Sunday! Checking for One Piece...")
+  cron.schedule('0 8 * * *', () => {
     checkUpdates()
   })
-
-  
-  setInterval(checkUpdates, 3600000)
-});
+})
 
 app.get('/', (req, res) => {
   res.send(`<p>Ani-Ping is online!</p>`)
-});
+})
+
+app.get('/test-check', (req, res) => { 
+  checkUpdates();
+  res.send(`<p>Manual Check started</p>`)
+})
