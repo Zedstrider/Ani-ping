@@ -8,6 +8,7 @@ require('dotenv').config()
 const mongoose = require('mongoose'); 
 const cron = require('node-cron')
 
+const BASE_URL=process.env.BASE_URL
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -98,7 +99,9 @@ async function checkUpdates() {
           await sendEmail(
             sub.email,
             `New episode alert: ${anime.title}`,
-            `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>`
+            `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>
+            <br>
+            <a href="${BASE_URL}/unsubscribe?id=${sub._id}&title=${anime.title}">Unsubscribe</a>`
           )
         }
       }
@@ -112,6 +115,13 @@ app.post('/subscribe', async (req, res) => {
   const email = req.body.email
   const animeTitle = req.body.animeTitle
   const existingSubscriber = await Subscriber.findOne({ email: email });
+  if(!email.includes("@"))
+  {
+    return res.send(`<h1>Invalid Email</h1>`)
+  }
+  if (!animeTitle) {
+        return res.send(`<h1>Anime Title is required</h1>`);
+  }
   try {
     if (existingSubscriber) {
         if (!existingSubscriber.animeTitle.includes(animeTitle)){
@@ -166,3 +176,17 @@ app.get('/test-check', (req, res) => {
   checkUpdates();
   res.send(`<p>Manual Check started</p>`)
 })
+
+app.get('/unsubscribe',async (req,res)=>{
+  try{
+    const id=req.query.id
+    const animeTitle = req.query.title
+    await Subscriber.findByIdAndUpdate(id,{$pull:{animeTitle:animeTitle}})
+    res.send(`<h1>You have successfully unsubscribed from ${animeTitle}</h1>`)
+  }catch(error){
+    console.error("Error unsubscribing: ",error.message)
+    res.send('Something went wrong.')
+  }
+})
+
+
