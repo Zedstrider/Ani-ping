@@ -1,6 +1,6 @@
 const express=require('express') 
 const app=express()
-app.use(express.static(__dirname))
+app.use(express.static('public'))
 app.use(express.urlencoded({ extended: true }))
 const { google } = require('googleapis')
 const axios=require('axios')
@@ -23,7 +23,7 @@ const subscriberSchema = new mongoose.Schema({
 
 const Subscriber = mongoose.model('Subscriber', subscriberSchema)
 
-const PORT = 5501
+const PORT = process.env.PORT || 5501
 // Setup Google Auth Client
 const oAuth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -189,4 +189,8 @@ app.get('/unsubscribe',async (req,res)=>{
   }
 })
 
+app.get('/db-check',async (req,res)=>{
+  const subscribers = await Subscriber.find({})
+  res.json(subscribers)
+})
 
