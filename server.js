@@ -88,32 +88,37 @@ async function checkUpdates() {
       console.log("Airing today:", anime.title)
     }
     for (const anime of animeList) {
-      // Find subscribers who are watching THIS specific anime
-      const subscribers = await Subscriber.find({ animeTitle: anime.title })
+      //Get the current time in Tokyo (matches Jikan's time zone)
+      const currentTokyoTime = new Date().toLocaleString("en-US", {
+          timeZone: "Asia/Tokyo",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false 
+      })
+      if (currentTokyoTime === anime.broadcast.time) {
+        // Find subscribers who are watching THIS specific anime
+        const subscribers = await Subscriber.find({ animeTitle: anime.title.toLowerCase()})
 
-      if (subscribers.length > 0) {
-        console.log(`Found ${subscribers.length} fans for: ${anime.title}`)
-
-        //Send emails to those fans
-        for (const sub of subscribers) {
-          await sendEmail(
-            sub.email,
-            `New episode alert: ${anime.title}`,
-            `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>
-            <br>
-            <a href="${BASE_URL}/unsubscribe?id=${sub._id}&title=${anime.title}">Unsubscribe</a>`
-          )
+        if (subscribers.length > 0) {
+          console.log(`Found ${subscribers.length} fans for: ${anime.title}`)
+          //Send emails to those fans
+          for (const sub of subscribers) {
+            await sendEmail(
+              sub.email,
+              `New episode alert: ${anime.title}`,
+              `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>
+              <br>
+              <a href="${BASE_URL}/unsubscribe?id=${sub._id}&title=${anime.title}">Unsubscribe</a>`
+            )
+          }
         }
-      }
-    }
-  } catch (error) {
-    console.error("Logic Error:", error.message)
+    }}} catch (error) {
+          console.error("Logic Error:", error.message)
   }
 }
-
 app.post('/subscribe', async (req, res) => {
   const email = req.body.email
-  const animeTitle = req.body.animeTitle
+  const animeTitle = req.body.animeTitle.toLowerCase()
   const existingSubscriber = await Subscriber.findOne({ email: email });
   if(!email.includes("@"))
   {
@@ -163,7 +168,7 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
   
   
-  cron.schedule('0 8 * * *', () => {
+  cron.schedule('* * * * *', () => {
     checkUpdates()
   })
 })
@@ -187,10 +192,5 @@ app.get('/unsubscribe',async (req,res)=>{
     console.error("Error unsubscribing: ",error.message)
     res.send('Something went wrong.')
   }
-})
-
-app.get('/db-check',async (req,res)=>{
-  const subscribers = await Subscriber.find({})
-  res.json(subscribers)
 })
 
