@@ -84,9 +84,9 @@ async function checkUpdates() {
 
     console.log(`Found ${animeList.length} anime airing today.`)
     
-    for (const anime of animeList) {
+    /*for (const anime of animeList) {
       console.log("Airing today:", anime.title)
-    }
+    }*/
     for (const anime of animeList) {
       //Get the current time in Tokyo (matches Jikan's time zone)
       const currentTokyoTime = new Date().toLocaleString("en-US", {
