@@ -18,7 +18,8 @@ mongoose.connect(process.env.MONGO_URI)
 const subscriberSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   joinedAt: { type: Date, default: Date.now },
-  animeTitle:{ type: [String], required: true }
+  animeTitle:{ type: [String], required: true },
+  lastEmailed:{type: Date}
 })
 
 const Subscriber = mongoose.model('Subscriber', subscriberSchema)
@@ -82,7 +83,7 @@ async function checkUpdates() {
     const response = await axios.get(`https://api.jikan.moe/v4/schedules/${dayName}`)
     const animeList = response.data.data
 
-    console.log(`Found ${animeList.length} anime airing today.`)
+    //console.log(`Found ${animeList.length} anime airing today.`)
     
     /*for (const anime of animeList) {
       console.log("Airing today:", anime.title)
@@ -95,24 +96,39 @@ async function checkUpdates() {
           minute: "2-digit",
           hour12: false 
       })
-      if (currentTokyoTime === anime.broadcast.time) {
+      if(anime.broadcast.time){
+        const todayStr = new Date().toLocaleDateString();
+        const [currenthoursStr, currentminutesStr] = currentTokyoTime.split(':')
+        const currentTotalMinutes=parseInt(currenthoursStr)*60+parseInt(currentminutesStr) 
+        const [animehoursStr, animeminutesStr] = anime.broadcast.time.split(':')
+        const animeTotalMinutes=parseInt(animehoursStr)*60+parseInt(animeminutesStr)
+        const timeDiff = currentTotalMinutes - animeTotalMinutes
+        if (timeDiff <= 5 && timeDiff >= 0) {
         // Find subscribers who are watching THIS specific anime
-        const subscribers = await Subscriber.find({ animeTitle: anime.title.toLowerCase()})
+          const subscribers = await Subscriber.find({ animeTitle: anime.title.toLowerCase()})
 
-        if (subscribers.length > 0) {
-          console.log(`Found ${subscribers.length} fans for: ${anime.title}`)
-          //Send emails to those fans
-          for (const sub of subscribers) {
-            await sendEmail(
-              sub.email,
-              `New episode alert: ${anime.title}`,
-              `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>
-              <br>
-              <a href="${BASE_URL}/unsubscribe?id=${sub._id}&title=${anime.title}">Unsubscribe</a>`
-            )
+          if (subscribers.length > 0) {
+            console.log(`Found ${subscribers.length} fans for: ${anime.title}`)
+            //Send emails to those fans
+            for (const sub of subscribers) {
+              // If lastEmailed exists, convert it to a string. Otherwise, set it to undefined.
+              const lastEmailedStr = sub.lastEmailed ? sub.lastEmailed.toLocaleDateString() : undefined
+              if (lastEmailedStr !== todayStr) {
+                await sendEmail(
+                  sub.email,
+                  `New episode alert: ${anime.title}`,
+                  `<h3>Heads up!</h3><p><b>${anime.title}</b> is currently airing.</p>
+                  <br>
+                  <a href="${BASE_URL}/unsubscribe?id=${sub._id}&title=${anime.title}">Unsubscribe</a>`
+                )
+              sub.lastEmailed = today
+              await sub.save()
+              } 
+            }
           }
         }
-    }}} catch (error) {
+      }
+    }} catch (error) {
           console.error("Logic Error:", error.message)
   }
 }
