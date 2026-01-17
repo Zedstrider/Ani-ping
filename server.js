@@ -53,6 +53,7 @@ async function sendEmail(to, subject, message) {
     console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error("Failed to send to " + to, error.message)
+    throw error;
   }
 }
 
@@ -103,6 +104,9 @@ async function checkUpdates() {
         const [animehoursStr, animeminutesStr] = anime.broadcast.time.split(':')
         const animeTotalMinutes=parseInt(animehoursStr)*60+parseInt(animeminutesStr)
         const timeDiff = currentTotalMinutes - animeTotalMinutes
+
+        //console.log(`${anime.title} starts in ${timeDiff} minutes`)
+
         if (timeDiff <= 5 && timeDiff >= 0) {
         // Find subscribers who are watching THIS specific anime
           const subscribers = await Subscriber.find({ animeTitle: anime.title.toLowerCase()})
