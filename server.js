@@ -105,7 +105,8 @@ async function checkUpdates() {
         const animeTotalMinutes=parseInt(animehoursStr)*60+parseInt(animeminutesStr)
         const timeDiff = currentTotalMinutes - animeTotalMinutes
 
-        //console.log(`${anime.title} starts in ${timeDiff} minutes`)
+        //if(timeDiff<0)
+        //  console.log(`${anime.title} starts in ${-timeDiff} minutes`)
 
         if (timeDiff <= 5 && timeDiff >= 0) {
         // Find subscribers who are watching THIS specific anime
@@ -152,6 +153,7 @@ app.post('/subscribe', async (req, res) => {
         if (!existingSubscriber.animeTitle.includes(animeTitle)){
           existingSubscriber.animeTitle.push(animeTitle)
           await existingSubscriber.save()
+          console.log(`${email} subscribed to ${animeTitle}`)
         }else{
           return res.send(`
                           <h1>Oops!</h1>
