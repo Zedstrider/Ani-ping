@@ -2,7 +2,7 @@
 
 [![Status](https://img.shields.io/badge/status-active-brightgreen)]() [![License](https://img.shields.io/badge/license-ISC-blue)]()
 
-Lightweight Node.js service that monitors anime airing schedules (via the Jikan API) and notifies subscribed users by email when an episode starts. Built with Express, MongoDB (Mongoose), Google Gmail API and a cron job.
+Node.js service that monitors anime airing schedules (via the Jikan API) and notifies subscribed users by email when an episode starts. Built with Express, MongoDB (Mongoose), Google Gmail API and a cron job.
 
 ---
 
